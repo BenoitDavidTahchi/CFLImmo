@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard BIM - ADCRM (Application Autonome - Dark Mode)</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    body { font-family: "Segoe UI", Tahoma, sans-serif; margin: 20px; color: #cbd5e1; background-color: #020617; }
+    .container { max-width: 98%; margin: 0 auto; }
+    .header { background: #0f172a; padding: 20px 25px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); border-bottom: 4px solid #E3000F; display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 20px; border: 1px solid #1e293b; border-bottom: 4px solid #E3000F;}
+    .header h1 { color: #f8fafc; margin: 0; font-size: 24px; } .header h1 span { color: #E3000F; }
+    .export-controls { display: flex; gap: 8px; justify-content: flex-end; margin-top: 10px; align-items:center;}
+    .export-btn { padding: 6px 12px; font-size: 12px; font-weight: bold; border-radius: 4px; cursor: pointer; border: none; transition: 0.2s; display: flex; align-items: center; gap: 6px;}
+    .btn-csv { background: #1e293b; color: #cbd5e1; border: 1px solid #334155; } .btn-csv:hover { background: #334155; }
+    .btn-excel { background: #065f46; color: white; border: 1px solid #047857; } .btn-excel:hover { background: #047857; }
+    .btn-pdf { background: #991b1b; color: white; } .btn-pdf:hover { background: #7f1d1d; }
+    .btn-import { background: #1e293b; color: white; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: bold; display: flex; align-items: center; gap: 6px; border: 1px solid #334155; transition: 0.2s; }
+    .btn-import:hover { background: #334155; }
+    .btn-import-blue { background: #1d4ed8; color: white; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: bold; display: flex; align-items: center; gap: 6px; border: none; transition: 0.2s; }
+    .btn-import-blue:hover { background: #1e40af; }
+    .tab-container { display: flex; gap: 10px; background: #0f172a; padding: 10px 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); margin-bottom: 20px; border: 1px solid #1e293b; }
+    .tab-btn { padding: 10px 20px; border: none; background: transparent; cursor: pointer; font-weight: bold; color: #64748b; border-radius: 6px; transition: all 0.2s; font-size: 14px; }
+    .tab-btn:hover { background: #1e293b; color: #f8fafc; } .tab-btn.active { background: #020617; color: #E3000F; border-bottom: 2px solid #E3000F; border-radius: 6px 6px 0 0; }
+    .tab-pane { display: none; } .tab-pane.active { display: block; animation: fadeIn 0.3s; } @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    .cover-card { background: #0f172a; padding: 25px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); margin-bottom: 20px; border: 1px solid #1e293b; }
+    .cover-card h2 { margin-top: 0; color: #f8fafc; border-bottom: 2px solid #1e293b; padding-bottom: 10px; font-size: 18px;}
+    .cover-table { width: 100%; max-width: 600px; border-collapse: collapse; font-size: 13px; } .cover-table td { padding: 8px 12px; border-bottom: 1px solid #1e293b; }
+    .cover-table td:first-child { font-weight: bold; color: #94a3b8; text-transform: uppercase; width: 40%; } .cover-table td:last-child { font-weight: 600; color: #e2e8f0; }
+    .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 15px; margin-bottom: 20px; }
+    .kpi-card { background: #0f172a; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); display: flex; flex-direction: column; justify-content: center; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; border: 1px solid #1e293b;}
+    .kpi-card:hover { transform: translateY(-2px); box-shadow: 0 4px 15px rgba(0,0,0,0.5); } .kpi-card.active { border: 2px solid #E3000F; background-color: #1e1b4b; }
+    .kpi-title { font-size: 11px; font-weight: bold; color: #94a3b8; text-transform: uppercase; margin-bottom: 5px; pointer-events: none;} .kpi-value { font-size: 24px; font-weight: 900; pointer-events: none; color: #f8fafc !important;}
+    .chart-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin-bottom: 20px; }
+    .chart-card { background: #0f172a; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); border: 1px solid #1e293b; }
+    .chart-card h3 { margin-top: 0; font-size: 13px; color: #94a3b8; text-transform: uppercase; border-bottom: 1px solid #1e293b; padding-bottom: 10px; margin-bottom: 15px; cursor: help; }
+    .chart-container-inner { position: relative; height: 220px; width: 100%; cursor: pointer;}
+    .filters-bar { background: #0f172a; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); margin-bottom: 20px; border: 1px solid #1e293b; }
+    .filters-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; }
+    .filter-group { display: flex; flex-direction: column; gap: 5px; } .filter-group.full-width { grid-column: 1 / -1; }
+    .filter-group label { font-size: 10px; font-weight: bold; text-transform: uppercase; color: #94a3b8; }
+    .filter-group select, .filter-group input { padding: 8px; border: 1px solid #334155; border-radius: 6px; font-size: 12px; width: 100%; box-sizing: border-box; outline:none; background-color: #020617; font-weight: 600; color: #e2e8f0; transition: all 0.2s;}
+    .filter-group select:focus, .filter-group input:focus { border-color: #E3000F; box-shadow: 0 0 0 2px rgba(227,0,15,0.2); }
+    .table-container { background: #0f172a; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); overflow: auto; width: 100%; max-height: 70vh; padding-bottom: 15px; border: 1px solid #1e293b; }
+    table.data-table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 11px; table-layout: auto; }
+    .data-table th, .data-table td { padding: 10px 12px; text-align: left; border-bottom: 1px solid #1e293b; white-space: normal; word-wrap: break-word; overflow-wrap: break-word; }
+    .data-table th { background-color: #1e293b; color: #cbd5e1; font-weight: bold; text-transform: uppercase; position: sticky; top: 0; z-index: 20; user-select: none; transition: background-color 0.2s;}
+    .data-table td:first-child { position: sticky; left: 0; z-index: 10; background-color: #0f172a; border-right: 1px solid #1e293b; }
+    .data-table th:first-child { position: sticky; left: 0; top: 0; z-index: 30; background-color: #1e293b; border-right: 1px solid #1e293b; }
+    .data-table tr.hidden { display: none; } .data-table tr:hover td { background-color: #1e293b; } .data-table tr:hover td:first-child { background-color: #1e293b; }
+    .data-table tr.row-overdue { background-color: rgba(159, 18, 57, 0.2); } .data-table tr.row-overdue:hover td { background-color: rgba(159, 18, 57, 0.4); }
+    .table-container::-webkit-scrollbar { height: 16px; width: 16px; } .table-container::-webkit-scrollbar-track { background: #020617; border-radius: 8px; margin: 4px; box-shadow: inset 0 0 5px rgba(0,0,0,0.5); }
+    .table-container::-webkit-scrollbar-thumb { background-color: #334155; border-radius: 8px; border: 3px solid #020617; } .table-container::-webkit-scrollbar-thumb:hover { background-color: #E3000F; }
+    .comment-box { white-space: pre-wrap; max-height: 120px; overflow-y: auto; padding-right: 5px; font-size: 10px; color: #94a3b8; min-width: 200px; max-width: 300px; }
+    .comment-box::-webkit-scrollbar { width: 4px; } .comment-box::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+    .resizer { position: absolute; right: 0; top: 0; width: 6px; height: 100%; cursor: col-resize; z-index: 40; background-color: transparent; transform: translateX(50%); transition: background-color 0.2s; }
+    .resizer:hover, .resizer.active { background-color: #E3000F; opacity: 1; } th[draggable="true"] { cursor: move; } th.dragging { opacity: 0.5; background-color: #334155; }
+    .badge { padding: 4px 8px; border-radius: 4px; font-size: 10px; font-weight: bold; display: inline-block; border: 1px solid rgba(255,255,255,0.1); }
+    .badge.encours { background: rgba(59, 130, 246, 0.2); color: #60a5fa; } .badge.attente { background: rgba(245, 158, 11, 0.2); color: #fbbf24; } .badge.ferme { background: rgba(16, 185, 129, 0.2); color: #34d399; } .badge.invalide { background: rgba(239, 68, 68, 0.2); color: #f87171; }
+    .text-red { color: #f87171; } .text-purple { color: #E3000F; font-weight: 900;} .text-emerald { color: #34d399; font-weight: bold;}
+    @media print {
+        body { background: white; margin: 0; padding: 0; color: black; } .header { box-shadow: none; border-bottom: 2px solid #E3000F; margin-bottom: 10px; padding: 10px 0; background: white; color: black;}
+        .export-controls, .filters-bar, .resizer, .tab-container { display: none !important; } .tab-pane { display: block !important; } 
+        .kpi-card, .chart-card, .cover-card { box-shadow: none; border: 1px solid #e2e8f0; background: white; break-inside: avoid; } .table-container { max-height: none !important; overflow: visible !important; box-shadow: none; border: none; background: white;}
+        table { page-break-inside: auto; } tr { page-break-inside: avoid; page-break-after: auto; } .data-table th, .data-table td { border-bottom: 1px solid #ccc; padding: 5px; color: black;}
+        .data-table td:first-child { background-color: transparent !important; } .data-table th:first-child { background-color: transparent !important; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div><h1 style="color:white;">Rapport Workflows - <span>ADCRM</span></h1><p style="margin:5px 0 0 0;font-size:13px;font-weight:bold;color:#94a3b8;">BIM Information Management</p></div>
+      <div style="text-align: right;">
+          <p style="color: #cbd5e1; font-weight:bold; margin:0; margin-bottom:10px;">Généré le: 06/03/2026</p>
+          <div class="export-controls">
+              <label class="btn-import-blue"><i class="fa-solid fa-users"></i> Import Membres<input type="file" accept=".csv, .xlsx, .xls" style="display:none;" onchange="handleHtmlMembersUpload(event)"></label>
+              <label class="btn-import"><i class="fa-solid fa-cloud-arrow-up"></i> Import Revues<input type="file" accept=".csv, .xlsx, .xls" style="display:none;" onchange="handleHtmlReviewsUpload(event)"></label>
+              <button class="export-btn btn-csv" onclick="exportDataCSV()"><i class="fa-solid fa-download"></i> CSV</button>
+              <button class="export-btn btn-excel" onclick="exportDataExcel()"><i class="fa-solid fa-file-excel"></i> Excel</button>
+              <button class="export-btn btn-pdf" onclick="window.print()"><i class="fa-solid fa-file-pdf"></i> PDF</button>
+          </div>
+      </div>
+    </div>
+    <div class="tab-container">
+        <button class="tab-btn active" onclick="openTab('tab-rapport', this)"><i class="fa-solid fa-book-open"></i> Rapport</button>
+        <button class="tab-btn" onclick="openTab('tab-donnees', this)"><i class="fa-solid fa-table-columns"></i> Base de Données</button>
+        <button class="tab-btn" onclick="openTab('tab-graphiques', this)"><i class="fa-solid fa-chart-simple"></i> Graphiques & KPIs</button>
+    </div>
+    <div id="tab-rapport" class="tab-pane active">
+        <div class="cover-card">
+          <h2>Résumé du Projet</h2>
+          <table class="cover-table">
+              <tr><td>Fichier Rapport</td><td>Review Report_IMMO_-----_Bâtiment Administratif_ADCRM</td></tr>
+              <tr><td>Date d'extraction</td><td id="c-date">5 mars 2026, 08:17 CET</td></tr>
+              <tr><td>Généré par</td><td id="c-auth">Benoit TAHCHI (SCFL - CFL IMMO)</td></tr>
+              <tr><td>Nombre total de revues</td><td id="c-tot" style="font-size:16px;">2057</td></tr>
+              <tr><td style="color:#60a5fa;">Ouvrir les revues (Action)</td><td style="color:#60a5fa; font-weight:900; font-size:16px;" id="c-ouv">179</td></tr>
+              <tr><td style="color:#fbbf24;">Revues en attente</td><td style="color:#fbbf24; font-weight:900;" id="c-att">82</td></tr>
+              <tr><td style="color:#34d399;">Revues fermées</td><td style="color:#34d399; font-weight:900;" id="c-fer">1515</td></tr>
+              <tr><td style="color:#f87171;">Révisions invalidées</td><td style="color:#f87171; font-weight:900;" id="c-inv">281</td></tr>
+          </table>
+        </div>
+    </div>
+    <div id="tab-graphiques" class="tab-pane">
+        <div class="kpi-grid">
+           <div class="kpi-card" onclick="document.querySelectorAll('select, input[type=text]').forEach(el => el.value=''); filterShowOverdue=false; applyFilters();" style="border-left: 4px solid #64748b;" title="Effacer tous les filtres"><div class="kpi-title">Fichiers Visibles</div><div class="kpi-value" id="kpi-total">0</div></div>
+           <div class="kpi-card" style="border-left: 4px solid #475569;" title="Nombre de workflows uniques (ID)"><div class="kpi-title">Workflows Uniques</div><div class="kpi-value" id="kpi-workflows">0</div></div>
+           <div class="kpi-card" id="kpi-card-approb" onclick="toggleFilterExact('f-progression', '50%'); openTab('tab-donnees', document.querySelectorAll('.tab-btn')[1])" style="border-left: 4px solid #a855f7;" title="Filtrer Bloqués chez l'approbateur"><div class="kpi-title" style="color:#c084fc;">En Approbation (50%)</div><div class="kpi-value" id="kpi-approb">0</div></div>
+           <div class="kpi-card" id="kpi-card-overdue" onclick="toggleOverdue()" style="border-left: 4px solid #f43f5e;" title="Filtrer les retards"><div class="kpi-title" style="color:#fb7185;">En Retard (SLA)</div><div class="kpi-value" id="kpi-overdue">0</div></div>
+           <div class="kpi-card" id="card-kpi-attente" onclick="toggleFilterExact('f-statut', 'attente'); openTab('tab-donnees', document.querySelectorAll('.tab-btn')[1])" style="border-left: 4px solid #f59e0b;" title="Filtrer par Attente Initiateur"><div class="kpi-title" style="color:#fbbf24;">Attente Init.</div><div class="kpi-value" id="kpi-attente">0</div></div>
+           <div class="kpi-card" id="card-kpi-encours" onclick="toggleFilterExact('f-statut', 'en cours'); openTab('tab-donnees', document.querySelectorAll('.tab-btn')[1])" style="border-left: 4px solid #3b82f6;" title="Filtrer par En Cours"><div class="kpi-title" style="color:#60a5fa;">En Cours</div><div class="kpi-value" id="kpi-encours">0</div></div>
+           <div class="kpi-card" id="card-kpi-ferme" onclick="toggleFilterExact('f-statut', 'fermé'); openTab('tab-donnees', document.querySelectorAll('.tab-btn')[1])" style="border-left: 4px solid #10b981;" title="Filtrer par Fermé"><div class="kpi-title" style="color:#34d399;">Fermés</div><div class="kpi-value" id="kpi-fermes">0</div></div>
+           <div class="kpi-card" id="card-kpi-invalide" onclick="toggleFilterExact('f-statut', 'invalidé'); openTab('tab-donnees', document.querySelectorAll('.tab-btn')[1])" style="border-left: 4px solid #ef4444;" title="Filtrer par Invalidé"><div class="kpi-title" style="color:#f87171;">Invalidés</div><div class="kpi-value" id="kpi-invalides">0</div></div>
+        </div>
+        <div class="chart-grid">
+           <div class="chart-card"><h3 title="Cliquez pour filtrer">Statut Global (Fichiers) 👆</h3><div class="chart-container-inner"><canvas id="chartStatut"></canvas></div></div>
+           <div class="chart-card"><h3 title="Cliquez pour filtrer">Statut Global (Workflows) 👆</h3><div class="chart-container-inner"><canvas id="chartWfStatut"></canvas></div></div>
+           <div class="chart-card"><h3 title="Cliquez pour filtrer">Statut de Révision 👆</h3><div class="chart-container-inner"><canvas id="chartStatutRev"></canvas></div></div>
+           <div class="chart-card"><h3 title="Cliquez pour filtrer">Formats de Fichiers (Ext) 👆</h3><div class="chart-container-inner"><canvas id="chartFormat"></canvas></div></div>
+           <div class="chart-card"><h3 title="Cliquez pour filtrer">Progression 👆</h3><div class="chart-container-inner"><canvas id="chartProgression"></canvas></div></div>
+           <div class="chart-card"><h3 title="Cliquez pour filtrer">Répartition par Phase (PHA) 👆</h3><div class="chart-container-inner"><canvas id="chartPhase"></canvas></div></div>
+           <div class="chart-card"><h3 title="Cliquez pour filtrer">Top Émetteurs Actifs 👆</h3><div class="chart-container-inner"><canvas id="chartEmetteur"></canvas></div></div>
+           <div class="chart-card" style="grid-column: 1 / -1;"><h3 title="Cliquez pour filtrer">Nombre de Workflows par Nom (Types) 👆</h3><div class="chart-container-inner"><canvas id="chartWfNom"></canvas></div></div>
+           <div class="chart-card" style="grid-column: 1 / -1;"><h3 title="Cliquez pour filtrer">Rôles Manquants par Acronyme 👆</h3><div class="chart-container-inner"><canvas id="chartMissingRoles"></canvas></div></div>
+        </div>
+    </div>
+    <div id="tab-donnees" class="tab-pane">
+        <div class="filters-bar">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+              <div style="font-size:14px; font-weight:bold; color:#e2e8f0;">🔍 Filtres Interactifs (Cliquez 2 fois sur un graph pour annuler)</div>
+              <button onclick="toggleFilterExact('f-convention', 'Non')" id="btn-fiches" style="background:#7c2d12; color:#fdba74; border:1px solid #c2410c; padding:6px 12px; border-radius:6px; font-size:12px; font-weight:bold; cursor:pointer;"><i class="fa-solid fa-file-lines"></i> Fiches Techniques</button>
+          </div>
+          <div class="filters-grid">
+              <input type="hidden" id="f-convention" value="" onchange="applyFilters()">
+              <div class="filter-group full-width"><label>Recherche Globale</label><input type="text" id="f-search" placeholder="Mot-clé..." onkeyup="applyFilters()"></div>
+              <div class="filter-group"><label>Statut Global</label><select id="f-statut" onchange="applyFilters()"><option value="">Tous</option><option value="en cours">En Cours</option><option value="attente">Attente Init.</option><option value="fermé">FERMÉ</option><option value="invalidé">INVALIDÉ</option></select></div>
+              <div class="filter-group"><label style="color:#c084fc;">Progression</label><select id="f-progression" onchange="applyFilters()"><option value="">Toutes</option></select></div>
+              <div class="filter-group"><label style="color:#34d399;">Statut Révision</label><select id="f-statutRev" onchange="applyFilters()"><option value="">Tous</option></select></div>
+              <div class="filter-group"><label>Format (Ext)</label><select id="f-ext" onchange="applyFilters()"><option value="">Tous</option></select></div>
+              <div class="filter-group"><label style="color:#fb7185;">Rôle Manquant</label><input type="text" id="f-missing" placeholder="Ex: STRU..." onkeyup="applyFilters()"></div>
+              <div class="filter-group"><label>Workflow</label><select id="f-workflow" onchange="applyFilters()"><option value="">Tous</option></select></div>
+              <div class="filter-group"><label style="color:#818cf8;">Lot</label><select id="f-lot" onchange="applyFilters()"><option value="">Tous</option></select></div>
+              <div class="filter-group"><label style="color:#f87171;">Phase</label><select id="f-phase" onchange="applyFilters()"><option value="">Toutes</option></select></div>
+              <div class="filter-group"><label style="color:#f87171;">Émetteur</label><select id="f-emetteur" onchange="applyFilters()"><option value="">Tous</option></select></div>
+              <div class="filter-group"><label style="color:#f87171;">Spécialité</label><select id="f-specialite" onchange="applyFilters()"><option value="">Toutes</option></select></div>
+              <div class="filter-group"><label style="color:#f87171;">Niveau</label><select id="f-niveau" onchange="applyFilters()"><option value="">Tous</option></select></div>
+              <div class="filter-group"><label style="color:#f87171;">TYP1</label><select id="f-type1" onchange="applyFilters()"><option value="">Tous</option></select></div>
+              <div class="filter-group"><label style="color:#f87171;">TYP2</label><select id="f-type2" onchange="applyFilters()"><option value="">Tous</option></select></div>
+              <div class="filter-group"><label style="color:#f87171;">Indice</label><select id="f-indice" onchange="applyFilters()"><option value="">Tous</option></select></div>
+          </div>
+        </div>
+        <div class="table-container" id="table-scroll"><table class="data-table"><thead id="table-head"></thead><tbody id="table-body"></tbody></table></div>
+    </div>
+  </div>
+  <script>
+    let allData = JSON.parse(decodeURIComponent(escape(atob("W3siaWQiOiJpbXBvcnRlZC1yb3ctMC0xNzcyNzgzMzU5OTY0Iiwid29ya2Zsb3dJZCI6IjE5MzEiLCJzdGF0dXRCYXNlIjoiT1VWRVJUIiwic3RhdHV0RGV0YWlsbMOpIjoiT1VWRVJUIChFTiBDT1VSUykiLCJub21SZXZ1ZSI6IlJldnVlIGRvY3VtZW50YWlyZSIsIndvcmtmbG93IjoiTE9UMi4xX0VYRV9QTEFOU18xMUpfQVJDSC1PQS1CRENfTU9HIiwiY2hlbWluIjoiQ2hlbWluLzAzLUxvdCAyLjEvRG9jIiwibG90IjoiTG90IDIuMSIsImluaXRpYXRldXIiOiJJbml0aWF0ZXVyIiwiZGF0ZUNyZWF0aW9uIjoiMTEgZsOpdiAyMDI2IiwicHJvZ3Jlc3Npb24iOiI1MCUiLCJldGFwZUFjdHVlbGxlIjoiUsOpdmlzaW9uIGluaXRpYWxlIiwiZHVlUGFyIjoiLS0iLCJkdWVMZSI6IjIgbWFycyAyMDI2IiwiY29tbWVudGFpcmVzQnJ1dCI6IlN0YXR1dCBtb2RpZmnDqSA6IEFzc2lnbsOpIMOgIE9HQ0VfQnVyZWF1LUNvbnRyb2xlLlxuWzEyLzAzLzIwMjZdIFNlY3LDqXRhcmlhdCBPQTogRmljaGllciBiaWVuIHJlw6d1LiIsImNvbW1lbnRhdGV1cnNTdHIiOiJTZWNyw6l0YXJpYXQgT0EgKENGTCkg4oCiIE9HQ0VfQnVyZWF1LUNvbnRyb2xlIChCdXJlYXUgZGUgQ29udHLDtGxlKSIsIm1pc3NpbmdSb2xlc1N0ciI6IkFSQ0giLCJyZXF1aXJlZFJvbGVzU3RyIjoiQVJDSCwgT0EsIEJEQyIsImFwcHJvYmF0ZXVyRmluYWwiOiJNT0ciLCJzdGF0dXRSZXZpc2lvbiI6IkFwcHJvdXbDqSBhdmVjIGNvbW1lbnRhaXJlcyIsImRhdGVDbG90dXJlIjoiLSIsImlzT3ZlcmR1ZSI6dHJ1ZSwicHJvamV0IjoiQURDUk0iLCJwaGFzZSI6IkNIQSIsImVtZXR0ZXVyIjoiVFNQRSIsInNwZWNpYWxpdGUiOiJHRU4iLCJuaXZlYXUiOiItLS0wMCIsInR5cGVEb2MiOiJGTS0wMDMyIiwidHlwZTEiOiJGTS0iLCJ0eXBlMiI6IjAwMzIiLCJpbmRpY2UiOiItQSIsImV4dCI6InBkZiIsImNvbnZlbnRpb24iOiJPdWkiLCJyYXciOiJBRENSTV9DSEFfVFNQRV9HRU5fLS0tMDBfRk0tMDAzMl8tQS5wZGYiLCJfbm9ybSI6eyJ3b3JrZmxvd0lkIjoiMTkzMSIsIndvcmtmbG93IjoibG90Mi4xX2V4ZV9wbGFuc18xMWpfYXJjaC1vYS1iZGNfbW9nIiwic3RhdHV0Ijoib3V2ZXJ0KGVuY291cnMpIiwiY29udmVudGlvbiI6Im91aSIsImV4dCI6InBkZiIsInBoYXNlIjoiY2hhIiwiZW1ldHRldXIiOiJ0c3BlIiwic3BlY2lhbGl0ZSI6ImdlbiIsIm5pdmVhdSI6Ii0tLTAwIiwidHlwZTEiOiJmbS0iLCJ0eXBlMiI6IjAwMzIiLCJpbmRpY2UiOiItYSIsImxvdCI6ImxvdDIuMSIsInJhdyI6ImFkY3JtX2NoYV90c3BlX2dlbl8tLS0wMF9mbS0wMDMyXy1hLnBkZiIsImR1ZVBhciI6Ii0tIiwiaW5pdGlhdGV1ciI6ImluaXRpYXRldXIiLCJjb21tZW50YXRldXJzIjoic2VjcmV0YXJpYXRvYShjZmwp4oCib2djZV9idXJlYXUtY29udHJvbGUoYnVyZWF1ZGVjb250cm9sZSkiLCJjb21tZW50YWlyZXNCcnV0Ijoic3RhdHV0bW9kaWZpZTphc3NpZ25lYW9nY2VfYnVyZWF1LWNvbnRyb2xlLlsxMi8wMy8yMDI2XXNlY3JldGFyaWF0b2E6ZmljaGllcmJpZW5yZWN1LiIsIm1pc3Npbmdfcm9sZXMiOiJhcmNoIiwicmVxdWlyZWRfcm9sZXMiOiJhcmNoLG9hLGJkYyIsImFwcHJvYmF0ZXVyIjoibW9nIiwic3RhdHV0X3JldmlzaW9uIjoiYXBwcm91dmVhdmVjY29tbWVudGFpcmVzIiwiZGF0ZV9jbG90dXJlIjoiLSIsInByb2dyZXNzaW9uIjoiNTAlIn19LHsiaWQiOiJpbXBvcnRlZC1yb3ctMS0xNzcyNzgzMzU5OTY0Iiwid29ya2Zsb3dJZCI6IjIwNzUiLCJzdGF0dXRCYXNlIjoiT1VWRVJUIiwic3RhdHV0RGV0YWlsbMOpIjoiT1VWRVJUIChFTiBDT1VSUykiLCJub21SZXZ1ZSI6IkxPVCAyLjEgLSBGTSBFY2xhaXJhZ2UgRzMiLCJ3b3JrZmxvdyI6IkxPVDIuMV9DSEFfRklDSEUtTU9ESUZJQ0FUSVZFXzEwSl9BUkNILVNUUlUtVFNQRV9NT0QiLCJjaGVtaW4iOiJDaGVtaW4vMDMtTG90IDIuMS9Eb2MiLCJsb3QiOiJMb3QgMi4xIiwiaW5pdGlhdGV1ciI6Ik5hbmN5IExlcGluZSIsImRhdGVDcmVhdGlvbiI6IjI1IGbDqXYgMjAyNiIsInByb2dyZXNzaW9uIjoiMCUiLCJldGFwZUFjdHVlbGxlIjoiUsOpdmlzaW9uIGluaXRpYWxlIiwiZHVlUGFyIjoiSW5pdGlhdGV1ciBkdSB3b3JrZmxvdyIsImR1ZUxlIjoiMiBtYXJzIDIwMjYiLCJjb21tZW50YWlyZXNCcnV0IjoiWzEyLzAzLzIwMjZdIE5hbmN5IExlcGluZTogTWVyY2kgZGUgcmV2b2lyIGwnw6ljbGFpcmFnZS4iLCJjb21tZW50YXRldXJzU3RyIjoiTmFuY3kgTGVwaW5lIChUU1BFKSIsIm1pc3NpbmdSb2xlc1N0ciI6IkFSQ0gsIFNUUlUiLCJyZXF1aXJlZFJvbGVzU3RyIjoiQVJDSCwgU1RSVSwgVFNQRSIsImFwcHJvYmF0ZXVyRmluYWwiOiJNT0QiLCJzdGF0dXRSZXZpc2lvbiI6IlJlamV0w6kiLCJkYXRlQ2xvdHVyZSI6Ii0iLCJpc092ZXJkdWUiOmZhbHNlLCJwcm9qZXQiOiJBRENSTSIsInBoYXNlIjoiQ0hBIiwiZW1ldHRldXIiOiJUU1BFIiwic3BlY2lhbGl0ZSI6IkdFTiIsIm5pdmVhdSI6Ii0tLTAwIiwidHlwZURvYyI6IkZNLTAwMzIiLCJ0eXBlMSI6IkZNLSIsInR5cGUyIjoiMDAzMiIsImluZGljZSI6Ii1BIiwiZXh0IjoiZHdnIiwiY29udmVudGlvbiI6Ik91aSIsInJhdyI6IkFEQ1JNX0NIQV9UU1BFX0dFTl8tLS0wMF9GTS0wMDMyXy1BLmR3ZyIsIl9ub3JtIjp7IndvcmtmbG93SWQiOiIyMDc1Iiwid29ya2Zsb3ciOiJsb3QyLjFfY2hhX2ZpY2hlLW1vZGlmaWNhdGl2ZV8xMGpfYXJjaC1zdHJ1LXRzcGVfbW9kIiwic3RhdHV0Ijoib3V2ZXJ0KGVuY291cnMpIiwiY29udmVudGlvbiI6Im91aSIsImV4dCI6ImR3ZyIsInBoYXNlIjoiY2hhIiwiZW1ldHRldXIiOiJ0c3BlIiwic3BlY2lhbGl0ZSI6ImdlbiIsIm5pdmVhdSI6Ii0tLTAwIiwidHlwZTEiOiJmbS0iLCJ0eXBlMiI6IjAwMzIiLCJpbmRpY2UiOiItYSIsImxvdCI6ImxvdDIuMSIsInJhdyI6ImFkY3JtX2NoYV90c3BlX2dlbl8tLS0wMF9mbS0wMDMyXy1hLmR3ZyIsImR1ZVBhciI6ImluaXRpYXRldXJkdXdvcmtmbG93IiwiaW5pdGlhdGV1ciI6Im5hbmN5bGVwaW5lIiwiY29tbWVudGF0ZXVycyI6Im5hbmN5bGVwaW5lKHRzcGUpIiwiY29tbWVudGFpcmVzQnJ1dCI6IlsxMi8wMy8yMDI2XW5hbmN5bGVwaW5lOm1lcmNpZGVyZXZvaXJsJ2VjbGFpcmFnZS4iLCJtaXNzaW5nX3JvbGVzIjoiYXJjaCxzdHJ1IiwicmVxdWlyZWRfcm9sZXMiOiJhcmNoLHN0cnUsdHNwZSIsImFwcHJvYmF0ZXVyIjoibW9kIiwic3RhdHV0X3JldmlzaW9uIjoicmVqZXRlIiwiZGF0ZV9jbG90dXJlIjoiLSIsInByb2dyZXNzaW9uIjoiMCUifX0seyJpZCI6ImltcG9ydGVkLXJvdy0yLTE3NzI3ODMzNTk5NjUiLCJ3b3JrZmxvd0lkIjoiOTk5OSIsInN0YXR1dEJhc2UiOiJGRVJNw4kiLCJzdGF0dXREZXRhaWxsw6kiOiJGRVJNw4kiLCJub21SZXZ1ZSI6IkNvZGlmaWNhdGlvbiBCSU0gQURDUk0iLCJ3b3JrZmxvdyI6IldvcmtmbG93X0JJTSIsImNoZW1pbiI6IkNoZW1pbi9Mb3QgMDAvRG9jIiwibG90IjoiTG90IDAwIiwiaW5pdGlhdGV1ciI6IkJlbm9pdCBUYWhjaGkiLCJkYXRlQ3JlYXRpb24iOiIyIG1hcnMgMjAyNiIsInByb2dyZXNzaW9uIjoiMTAwJSIsImV0YXBlQWN0dWVsbGUiOiJBcHByb3V2w6kiLCJkdWVQYXIiOiItLSIsImR1ZUxlIjoiMiBtYXJzIDIwMjYiLCJjb21tZW50YWlyZXNCcnV0IjoiQmVub2l0IFRhaGNoaTogRmljaGllciB2YWxpZMOpIHNhbnMgYXVjdW5lIHLDqXNlcnZlLiIsImNvbW1lbnRhdGV1cnNTdHIiOiJCZW5vaXQgVGFoY2hpIChDRkwgSU1NTykiLCJtaXNzaW5nUm9sZXNTdHIiOiItIiwicmVxdWlyZWRSb2xlc1N0ciI6Ii0iLCJhcHByb2JhdGV1ckZpbmFsIjoiQklNIiwic3RhdHV0UmV2aXNpb24iOiJBcHByb3V2w6kiLCJkYXRlQ2xvdHVyZSI6IjI1IG1hcnMgMjAyNiIsImlzT3ZlcmR1ZSI6ZmFsc2UsInByb2pldCI6Ii0iLCJwaGFzZSI6Ii0iLCJlbWV0dGV1ciI6Ii0iLCJzcGVjaWFsaXRlIjoiLSIsIm5pdmVhdSI6Ii0iLCJ0eXBlRG9jIjoiLSIsInR5cGUxIjoiLSIsInR5cGUyIjoiLSIsImluZGljZSI6Ii0iLCJleHQiOiJwZGYiLCJjb252ZW50aW9uIjoiTm9uIiwicmF3IjoiRmljaGVfVGVjaG5pcXVlX1BvbXBlX0FfQ2hhbGV1cl9WMi5wZGYiLCJfbm9ybSI6eyJ3b3JrZmxvd0lkIjoiOTk5OSIsIndvcmtmbG93Ijoid29ya2Zsb3dfYmltIiwic3RhdHV0IjoiZmVybWUiLCJjb252ZW50aW9uIjoibm9uIiwiZXh0IjoicGRmIiwicGhhc2UiOiItIiwiZW1ldHRldXIiOiItIiwic3BlY2lhbGl0ZSI6Ii0iLCJuaXZlYXUiOiItIiwidHlwZTEiOiItIiwidHlwZTIiOiItIiwiaW5kaWNlIjoiLSIsImxvdCI6ImxvdDAwIiwicmF3IjoiZmljaGVfdGVjaG5pcXVlX3BvbXBlX2FfY2hhbGV1cl92Mi5wZGYiLCJkdWVQYXIiOiItLSIsImluaXRpYXRldXIiOiJiZW5vaXR0YWhjaGkiLCJjb21tZW50YXRldXJzIjoiYmVub2l0dGFoY2hpKGNmbGltbW8pIiwiY29tbWVudGFpcmVzQnJ1dCI6ImJlbm9pdHRhaGNoaTpmaWNoaWVydmFsaWRlc2Fuc2F1Y3VuZXJlc2VydmUuIiwibWlzc2luZ19yb2xlcyI6Ii0iLCJyZXF1aXJlZF9yb2xlcyI6Ii0iLCJhcHByb2JhdGV1ciI6ImJpbSIsInN0YXR1dF9yZXZpc2lvbiI6ImFwcHJvdXZlIiwiZGF0ZV9jbG90dXJlIjoiMjVtYXJzMjAyNiIsInByb2dyZXNzaW9uIjoiMTAwJSJ9fV0="))));
+    let currentColumns = JSON.parse(decodeURIComponent(escape(atob("W3siaWQiOiJpZCIsImxhYmVsIjoiSUQifSx7ImlkIjoic3RhdHV0IiwibGFiZWwiOiJTdGF0dXQgR2xvYmFsIn0seyJpZCI6InN0YXR1dF9yZXZpc2lvbiIsImxhYmVsIjoiU3RhdHV0IFLDqXZpc2lvbiJ9LHsiaWQiOiJyZXF1aXJlZF9yb2xlcyIsImxhYmVsIjoiUsO0bGVzIE9ibGlnYXRvaXJlcyJ9LHsiaWQiOiJtaXNzaW5nX3JvbGVzIiwibGFiZWwiOiJSw7RsZXMgTWFucXVhbnRzIn0seyJpZCI6ImFwcHJvYmF0ZXVyIiwibGFiZWwiOiJBcHByb2JhdGV1ciBGaW5hbCJ9LHsiaWQiOiJhY3Rpb24iLCJsYWJlbCI6IkFjdGlvbiByZXF1aXNlIGRlIn0seyJpZCI6ImNvbW1lbnRhdGV1cnMiLCJsYWJlbCI6IkNvbW1lbnRhdGV1cnMgKEVudGl0w6kpIn0seyJpZCI6ImNvbW1lbnRhaXJlc190ZXh0IiwibGFiZWwiOiJDb21tZW50YWlyZXMifSx7ImlkIjoiZmljaGllciIsImxhYmVsIjoiRmljaGllciAmIFdvcmtmbG93In0seyJpZCI6ImxvdCIsImxhYmVsIjoiTG90In0seyJpZCI6InBoYXNlIiwibGFiZWwiOiJQSEEifSx7ImlkIjoiZW1ldHRldXIiLCJsYWJlbCI6IkVNRVRUIn0seyJpZCI6InNwZWNpYWxpdGUiLCJsYWJlbCI6IlNQRSJ9LHsiaWQiOiJuaXZlYXUiLCJsYWJlbCI6Ik5JViJ9LHsiaWQiOiJ0eXAxIiwibGFiZWwiOiJUWVAxIn0seyJpZCI6InR5cDIiLCJsYWJlbCI6IlRZUDIifSx7ImlkIjoiaW5kaWNlIiwibGFiZWwiOiJJTkQifSx7ImlkIjoicHJvZ3Jlc3Npb24iLCJsYWJlbCI6IlByb2dyZXNzaW9uIn0seyJpZCI6ImV0YXBlIiwibGFiZWwiOiLDiXRhcGUgYWN0dWVsbGUifSx7ImlkIjoiaW5pdGlhdGV1ciIsImxhYmVsIjoiSW5pdGnDqSBwYXIifSx7ImlkIjoiY3JlYXRpb24iLCJsYWJlbCI6IkRhdGUgQ3LDqWF0aW9uIn0seyJpZCI6ImRhdGVfY2xvdHVyZSIsImxhYmVsIjoiRGF0ZSBDbMO0dHVyZSJ9XQ=="))));
+    const filterOpts = JSON.parse(decodeURIComponent(escape(atob("eyJ3b3JrZmxvdyI6WyJMT1QyLjFfQ0hBX0ZJQ0hFLU1PRElGSUNBVElWRV8xMEpfQVJDSC1TVFJVLVRTUEVfTU9EIiwiTE9UMi4xX0VYRV9QTEFOU18xMUpfQVJDSC1PQS1CRENfTU9HIiwiV29ya2Zsb3dfQklNIl0sImxvdCI6WyJMb3QgMDAiLCJMb3QgMi4xIl0sInBoYXNlIjpbIkNIQSJdLCJlbWV0dGV1ciI6WyJUU1BFIl0sImV4dCI6WyJEV0ciLCJQREYiXSwic3RhdHV0X3JldmlzaW9uIjpbIkFwcHJvdXbDqSIsIkFwcHJvdXbDqSBhdmVjIGNvbW1lbnRhaXJlcyIsIlJlamV0w6kiXSwic3BlY2lhbGl0ZSI6WyJHRU4iXSwibml2ZWF1IjpbIi0tLTAwIl0sInR5cGUxIjpbIkZNLSJdLCJ0eXBlMiI6WyIwMDMyIl0sImluZGljZSI6WyItQSJdLCJwcm9ncmVzc2lvbiI6WyIwJSIsIjEwMCUiLCI1MCUiXX0="))));
+    let currentMembers = [{"name":"Abdel AMRANI","company":"TPFE","roles":["TSPE"]},{"name":"Adriano Candura","company":"TPFE","roles":["COB"]},{"name":"Albane Lacroix","company":"AREP","roles":["ARCH"]},{"name":"Alessandra Pace","company":"TPFE","roles":["STRU"]},{"name":"Alexandre Bonvier","company":"CBLL","roles":["EN2.1"]},{"name":"Alexandre Eloy","company":"TPFE","roles":["STRU"]},{"name":"Ana Fernandez","company":"TPFE","roles":["STRU"]},{"name":"Sylvain Falzone","company":"ENEN","roles":["INGC"]},{"name":"teresa garcia herreraruiz","company":"AREP","roles":["COB"]},{"name":"Thierry COLLIN","company":"SCFL","roles":["SCFL"]},{"name":"thimothé dumas","company":"AREP","roles":["PAYS"]},{"name":"Thomas Bruto","company":"TPFE","roles":["TSPE"]},{"name":"Thorsten Tamble","company":"SECL","roles":["BUCO","BDC","OGCE"]},{"name":"Benoit Tahchi","company":"CFL IMMO","roles":["SCFL"]},{"name":"Nancy Lepine","company":"TSPE","roles":["TSPE"]},{"name":"Claude Ballini","company":"TPFT","roles":["TPFT"]},{"name":"Jean Dupont","company":"Architectes SA","roles":["ARCH"]},{"name":"Marc Leblanc","company":"Bureau de Contrôle","roles":["BUCO","BDC","OGCE"]},{"name":"Secrétariat OA","company":"CFL","roles":["OA"]},{"name":"OGCE_Bureau-Controle","company":"Bureau de Contrôle","roles":["BUCO","BDC","OGCE"]}];
+    let currentData = [...allData];
+    let displayLimit = 50;
+    let filterShowOverdue = false;
+
+    function openTab(tabId, btnElement) {
+        document.querySelectorAll(".tab-pane").forEach(el => el.classList.remove("active"));
+        document.querySelectorAll(".tab-btn").forEach(el => el.classList.remove("active"));
+        document.getElementById(tabId).classList.add("active");
+        if(btnElement) btnElement.classList.add("active");
+        if (tabId === "tab-graphiques") { if(cStatut) cStatut.resize(); if(cFormat) cFormat.resize(); if(cPhase) cPhase.resize(); if(cEmetteur) cEmetteur.resize(); if(cProgression) cProgression.resize(); if(cStatutRev) cStatutRev.resize(); if(cMissingRoles) cMissingRoles.resize(); if(cWfStatut) cWfStatut.resize(); if(cWfNom) cWfNom.resize(); }
+    }
+    function normalizeText(str) { if(!str) return ""; return String(str).normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim(); }
+    function cleanDisplayStr(str) { return str ? String(str).replace(/[\u200B-\u200D\uFEFF]/g, "").trim() : ""; }
+    function safeStr(val) { return val ? String(val).replace(/[\u200B-\u200D\uFEFF]/g, "").trim() : "-"; }
+    
+    function parseFrenchDateLocal(dateStr) { if (!dateStr || dateStr === "-") return null; const months = { "janv": 0, "fev": 1, "fév": 1, "mars": 2, "avr": 3, "mai": 4, "juin": 5, "juil": 6, "aout": 7, "août": 7, "sept": 8, "oct": 9, "nov": 10, "dec": 11, "déc": 11 }; const parts = dateStr.trim().toLowerCase().split(/[\s,]+/); if (parts.length >= 3) { const day = parseInt(parts[0], 10); const monthStr = parts[1]; const year = parseInt(parts[2], 10); let month = -1; for (const [key, val] of Object.entries(months)) { if (monthStr.startsWith(key)) { month = val; break; } } if (month !== -1 && !isNaN(day) && !isNaN(year)) return new Date(year, month, day); } const fallback = new Date(dateStr); return isNaN(fallback.getTime()) ? null : fallback; }
+    function getDueDateInBusinessDaysLocal(startDate, businessDays) { let currentDate = new Date(startDate.getTime()); let addedDays = 0; while (addedDays < businessDays) { currentDate.setDate(currentDate.getDate() + 1); if (currentDate.getDay() !== 0 && currentDate.getDay() !== 6) { addedDays++; } } return currentDate; }
+    function parseFileNameLocal(filename) { const defaultNonCompliant = { projet: "-", phase: "-", emetteur: "-", specialite: "-", niveau: "-", typeDoc: "-", type1: "-", type2: "-", indice: "-", ext: "-", convention: "Non", raw: safeStr(filename) || "Inconnu" }; if (!filename) return defaultNonCompliant; const cleanName = cleanDisplayStr(filename); const lastDotIndex = cleanName.lastIndexOf("."); const ext = lastDotIndex !== -1 ? cleanName.substring(lastDotIndex + 1).toLowerCase() : "-"; const baseName = lastDotIndex !== -1 ? cleanName.substring(0, lastDotIndex) : cleanName; const parts = baseName.split("_").map(p => cleanDisplayStr(p)); let isCompliant = false; if (parts.length === 7 && parts[0].toUpperCase() === "ADCRM") { const isAcronyms = parts.slice(1, 5).every(p => p.length > 0 && p.length <= 15); if (isAcronyms) { isCompliant = true; } } if (isCompliant) { const typeDocFull = parts[5] || "-"; let typ1 = "-", typ2 = "-"; if (typeDocFull !== "-") { const tMatch = typeDocFull.match(/^([A-Za-z\-]+)(\d*)$/); if (tMatch) { typ1 = tMatch[1].toUpperCase(); typ2 = tMatch[2] || "-"; } else { typ1 = typeDocFull; } } return { projet: parts[0], phase: parts[1] || "-", emetteur: parts[2] || "-", specialite: parts[3] || "-", niveau: parts[4] || "-", typeDoc: typeDocFull, type1: typ1, type2: typ2, indice: parts[6] || "-", ext: ext, convention: "Oui", raw: cleanName }; } else { return { ...defaultNonCompliant, ext: ext }; } }
+    function determineDetailedStatus(baseStatus, etape) { const stat = safeStr(baseStatus).toUpperCase(); const step = safeStr(etape).toLowerCase(); if (stat.includes("INVALID") || step.includes("annul") || step.includes("invalid")) return "INVALIDÉ"; if (stat.includes("ATTENTE") || step.includes("attente") || step.includes("initiateur") || step.includes("initiator")) return "ATTENTE INITIATEUR"; if (stat.includes("OUVERT")) return "OUVERT (EN COURS)"; if (stat.includes("FERM")) return "FERMÉ"; return stat; }
+    function getRequiredRolesFromWorkflow(workflowStr) { if (!workflowStr || workflowStr === "-") return []; const parts = String(workflowStr).split("_"); const slaIndex = parts.findIndex(p => /^\d+J$/i.test(p)); if (slaIndex !== -1 && slaIndex + 1 < parts.length) { const rolesPart = parts[slaIndex + 1]; return rolesPart.split("-").map(r => r.trim().toUpperCase()); } return []; }
+    function getFinalApproverFromWorkflow(workflowStr) { if (!workflowStr || workflowStr === "-") return "-"; const parts = String(workflowStr).split("_"); const slaIndex = parts.findIndex(p => /^\d+J$/i.test(p)); if (slaIndex !== -1 && slaIndex + 2 < parts.length) { return parts[slaIndex + 2].toUpperCase(); } const lastPart = parts[parts.length - 1]; if (/^\d+J$/i.test(lastPart) || lastPart.includes("-")) return "-"; return lastPart.toUpperCase(); }
+    function extractLot(nomRevue, chemin, workflow) { const regex = /Lot\s*([0-9\.]+)/i; const regexSansEspace = /LOT([0-9\.]+)/i; const searchStr = String(nomRevue + " " + chemin + " " + workflow); let match = searchStr.match(regex); if (match) return "Lot " + match[1]; match = searchStr.match(regexSansEspace); if (match) return "Lot " + match[1]; return "Hors Lot"; }
+    function extractCommentersData(commentText, membersList) { if (!commentText || commentText === "-") return []; const foundNames = new Set(); const textNorm = normalizeText(commentText); membersList.forEach(member => { const mNameNorm = normalizeText(member.name); if (mNameNorm.length > 3) { const escapedName = mNameNorm.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"); const regex = new RegExp("\\b" + escapedName + "\\b", "i"); const parts = mNameNorm.split(" "); let reversedRegex = null; if (parts.length === 2) { const reversedName = parts[1] + " " + parts[0]; reversedRegex = new RegExp("\\b" + reversedName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "\\b", "i"); } if (regex.test(textNorm) || (reversedRegex && reversedRegex.test(textNorm))) { foundNames.add(member.name); } } }); const lines = String(commentText).split("\n"); lines.forEach(line => { const colonIdx = line.indexOf(":"); if (colonIdx > -1) { let beforeColon = line.substring(0, colonIdx); const lowerBefore = beforeColon.toLowerCase(); if (lowerBefore.match(/(modifié|changed|assigné|assigned|attribut|statut|status|copié|copied|étape|step|ajouté|added|transmis|forwarded|créé|created|approuvé|approved|rejeté|rejected|soumis|submitted|clôturé|closed|par\s|by\s|à\s|to\s)/)) return; const match = beforeColon.match(/^\s*(?:\[[^\]]+\]\s*)?([^:\[(]+?)\s*(?:\([^)]+\))?\s*$/); if (match) { let authorPart = match[1].trim(); if (authorPart.length > 2 && authorPart.length < 50 && !authorPart.toLowerCase().includes("erreur")) { const authorNorm = normalizeText(authorPart); let alreadyMapped = false; for (const member of membersList) { const mNameNorm = normalizeText(member.name); const mNameReversed = mNameNorm.split(" ").reverse().join(" "); if (authorNorm === mNameNorm || authorNorm === mNameReversed) { alreadyMapped = true; break; } } if (!alreadyMapped) foundNames.add(authorPart); } } } }); return Array.from(foundNames); }
+    
+    function toggleFilterExact(id, val) { if (id === "kpi-card-overdue") { toggleOverdue(); return; } const el = document.getElementById(id); if (el) { if (el.value === val) el.value = ""; else el.value = val; applyFilters(); } }
+    function toggleOverdue() { filterShowOverdue = !filterShowOverdue; applyFilters(); openTab("tab-donnees", document.querySelectorAll(".tab-btn")[1]); }
+    function populateSelects() { const fill = (id, arr) => { const select = document.getElementById(id); if(!select || !arr) return; arr.forEach(val => { const opt = document.createElement("option"); opt.value = val; opt.textContent = val; select.appendChild(opt); }); }; fill("f-workflow", filterOpts.workflow); fill("f-lot", filterOpts.lot); fill("f-phase", filterOpts.phase); fill("f-emetteur", filterOpts.emetteur); fill("f-ext", filterOpts.ext); fill("f-statutRev", filterOpts.statut_revision); fill("f-progression", filterOpts.progression); fill("f-specialite", filterOpts.specialite); fill("f-niveau", filterOpts.niveau); fill("f-type1", filterOpts.type1); fill("f-type2", filterOpts.type2); fill("f-indice", filterOpts.indice); }
+    
+    let cStatut, cFormat, cPhase, cEmetteur, cProgression, cStatutRev, cMissingRoles, cWfStatut, cWfNom;
+    function initCharts() {
+       if (typeof Chart === "undefined") return;
+       Chart.defaults.color = '#94a3b8';
+       Chart.defaults.borderColor = '#1e293b';
+       const createClickFilter = (filterId, isStatut = false) => { return (e, activeEls, chart) => { if (activeEls.length > 0) { const rawLabel = chart.data.labels[activeEls[0].index]; const select = document.getElementById(filterId); if (select) { let finalVal = rawLabel; if (isStatut) { const lbl = rawLabel.toLowerCase(); if (lbl.includes("attente")) finalVal = "attente"; else if (lbl.includes("cours") || lbl.includes("ouvert")) finalVal = "en cours"; else if (lbl.includes("ferm")) finalVal = "fermé"; else if (lbl.includes("invalid")) finalVal = "invalidé"; } if (select.value === finalVal) select.value = ""; else select.value = finalVal; applyFilters(); openTab("tab-donnees", document.querySelectorAll(".tab-btn")[1]); } } }; };
+       const pieOpts = { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: true, position: "right", labels: { boxWidth: 12, font: {size: 10} } } }, cutout: "60%" };
+       const barOpts = { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { grid: { color: '#1e293b' } }, y: { grid: { color: '#1e293b' } } } };
+       
+       cStatut = new Chart(document.getElementById("chartStatut"), { type: "doughnut", data: { labels: [], datasets: [{ data: [], backgroundColor: [], borderColor: '#0f172a', borderWidth: 2 }] }, options: { ...pieOpts, onClick: createClickFilter("f-statut", true) } });
+       cWfStatut = new Chart(document.getElementById("chartWfStatut"), { type: "doughnut", data: { labels: [], datasets: [{ data: [], backgroundColor: [], borderColor: '#0f172a', borderWidth: 2 }] }, options: { ...pieOpts, onClick: createClickFilter("f-statut", true) } });
+       cFormat = new Chart(document.getElementById("chartFormat"), { type: "doughnut", data: { labels: [], datasets: [{ data: [], backgroundColor: [], borderColor: '#0f172a', borderWidth: 2 }] }, options: { ...pieOpts, onClick: createClickFilter("f-ext") } });
+       cStatutRev = new Chart(document.getElementById("chartStatutRev"), { type: "doughnut", data: { labels: [], datasets: [{ data: [], backgroundColor: [], borderColor: '#0f172a', borderWidth: 2 }] }, options: { ...pieOpts, onClick: createClickFilter("f-statutRev") } });
+       cPhase = new Chart(document.getElementById("chartPhase"), { type: "bar", data: { labels: [], datasets: [{ data: [] }] }, options: { ...barOpts, onClick: createClickFilter("f-phase") } });
+       cEmetteur = new Chart(document.getElementById("chartEmetteur"), { type: "bar", data: { labels: [], datasets: [{ data: [] }] }, options: { ...barOpts, onClick: createClickFilter("f-emetteur") } });
+       cProgression = new Chart(document.getElementById("chartProgression"), { type: "bar", data: { labels: [], datasets: [{ data: [] }] }, options: { ...barOpts, onClick: createClickFilter("f-progression") } });
+       cMissingRoles = new Chart(document.getElementById("chartMissingRoles"), { type: "bar", data: { labels: [], datasets: [{ data: [] }] }, options: { ...barOpts, onClick: createClickFilter("f-missing") } });
+       cWfNom = new Chart(document.getElementById("chartWfNom"), { type: "bar", data: { labels: [], datasets: [{ data: [] }] }, options: { ...barOpts, onClick: createClickFilter("f-workflow") } });
+    }
+
+    function updateDashboard() {
+        let attente = 0, encours = 0, fermes = 0, invalides = 0, overdues = 0, approb = 0;
+        let chartData = { statuts: {}, formats: {}, phases: {}, emetteurs: {}, progressions: {}, statutRevisions: {}, missingRoles: {}, wfStatuts: {}, wfNoms: {} };
+        const workflowsMap = new Map();
+        currentData.forEach(row => {
+            const stat = row.statutDetaillé;
+            if (stat === "ATTENTE INITIATEUR") attente++; if (stat === "OUVERT (EN COURS)") encours++; if (stat === "FERMÉ") fermes++; if (stat === "INVALIDÉ") invalides++;
+            if (row.isOverdue) overdues++; if (row.progression === "50%" && stat === "OUVERT (EN COURS)") approb++;
+            chartData.statuts[stat] = (chartData.statuts[stat] || 0) + 1;
+            if (row.ext && row.ext !== "-") chartData.formats[row.ext.toUpperCase()] = (chartData.formats[row.ext.toUpperCase()] || 0) + 1;
+            if (row.phase && row.phase !== "-") chartData.phases[row.phase] = (chartData.phases[row.phase] || 0) + 1;
+            if (row.emetteur && row.emetteur !== "-") chartData.emetteurs[row.emetteur] = (chartData.emetteurs[row.emetteur] || 0) + 1;
+            if (row.progression && row.progression !== "-") chartData.progressions[row.progression] = (chartData.progressions[row.progression] || 0) + 1;
+            if (row.statutRevision && row.statutRevision !== "-") chartData.statutRevisions[row.statutRevision] = (chartData.statutRevisions[row.statutRevision] || 0) + 1;
+            if (row.missingRolesStr && row.missingRolesStr !== "✅ Tous commenté" && row.missingRolesStr !== "INITIATEUR" && row.missingRolesStr !== "-") {
+                const roles = row.missingRolesStr.replace("⏱️ ", "").split(",").map(r => r.trim()).filter(Boolean);
+                roles.forEach(r => { chartData.missingRoles[r] = (chartData.missingRoles[r] || 0) + 1; });
+            }
+            if (row.workflowId && row.workflowId !== "-") { if (!workflowsMap.has(row.workflowId)) { workflowsMap.set(row.workflowId, { statut: stat, nom: row.workflow }); } }
+        });
+        workflowsMap.forEach((wf) => { chartData.wfStatuts[wf.statut] = (chartData.wfStatuts[wf.statut] || 0) + 1; if (wf.nom && wf.nom !== "-") chartData.wfNoms[wf.nom] = (chartData.wfNoms[wf.nom] || 0) + 1; });
+        document.getElementById("kpi-total").textContent = currentData.length; document.getElementById("kpi-workflows").textContent = workflowsMap.size;
+        document.getElementById("kpi-attente").textContent = attente; document.getElementById("kpi-encours").textContent = encours;
+        document.getElementById("kpi-fermes").textContent = fermes; document.getElementById("kpi-invalides").textContent = invalides;
+        document.getElementById("kpi-overdue").textContent = overdues; document.getElementById("kpi-approb").textContent = approb;
+        const sVal = document.getElementById("f-statut").value;
+        document.getElementById("card-kpi-attente").classList.toggle("active", sVal === "attente"); document.getElementById("card-kpi-encours").classList.toggle("active", sVal === "en cours");
+        document.getElementById("card-kpi-ferme").classList.toggle("active", sVal === "fermé"); document.getElementById("card-kpi-invalide").classList.toggle("active", sVal === "invalidé");
+        document.getElementById("kpi-card-approb").classList.toggle("active", document.getElementById("f-progression").value === "50%"); document.getElementById("kpi-card-overdue").classList.toggle("active", filterShowOverdue);
+        
+        const btnFiches = document.getElementById("btn-fiches");
+        if (btnFiches) {
+            if (document.getElementById("f-convention").value === "Non") {
+                btnFiches.style.background = "#c2410c"; btnFiches.style.color = "white";
+            } else {
+                btnFiches.style.background = "#7c2d12"; btnFiches.style.color = "#fdba74";
+            }
+        }
+
+        if (typeof Chart !== "undefined") {
+            const colors = { "OUVERT (EN COURS)": "#3b82f6", "ATTENTE INITIATEUR": "#f59e0b", "FERMÉ": "#10b981", "INVALIDÉ": "#ef4444" };
+            const formatColors = ["#cbd5e1", "#3b82f6", "#10b981", "#f59e0b", "#8b5cf6", "#64748b"]; const revColors = ["#10b981", "#f59e0b", "#ef4444", "#3b82f6", "#8b5cf6"];
+            const updatePie = (chart, obj, colorMap) => { if (!chart) return; const labels = Object.keys(obj); chart.data.labels = labels; chart.data.datasets[0].data = Object.values(obj); chart.data.datasets[0].backgroundColor = Array.isArray(colorMap) ? labels.map((l,i) => colorMap[i % colorMap.length]) : labels.map(l => colorMap[l] || "#cbd5e1"); chart.update(); };
+            const updateBar = (chart, obj, color) => { if (!chart) return; const sorted = Object.entries(obj).sort((a,b) => b[1]-a[1]).slice(0,10); chart.data.labels = sorted.map(i => i[0]); chart.data.datasets[0].data = sorted.map(i => i[1]); chart.data.datasets[0].backgroundColor = color; chart.update(); };
+            updatePie(cStatut, chartData.statuts, colors); updatePie(cWfStatut, chartData.wfStatuts, colors); updatePie(cFormat, chartData.formats, formatColors); updatePie(cStatutRev, chartData.statutRevisions, revColors);
+            updateBar(cPhase, chartData.phases, "#f87171"); updateBar(cEmetteur, chartData.emetteurs, "#60a5fa"); updateBar(cProgression, chartData.progressions, "#c084fc"); updateBar(cMissingRoles, chartData.missingRoles, "#fb923c"); updateBar(cWfNom, chartData.wfNoms, "#94a3b8");
+        }
+        renderTable(false);
+    }
+
+    function applyFilters() {
+      const search = normalizeText(document.getElementById("f-search").value); const filterStatut = document.getElementById("f-statut").value;
+      const filterWorkflow = document.getElementById("f-workflow").value; const filterLot = document.getElementById("f-lot").value;
+      const filterPhase = document.getElementById("f-phase").value; const filterEmetteur = document.getElementById("f-emetteur").value;
+      const filterMissing = normalizeText(document.getElementById("f-missing").value); const filterExt = document.getElementById("f-ext").value;
+      const filterStatutRev = document.getElementById("f-statutRev").value; const filterProgression = document.getElementById("f-progression").value;
+      const filterSpecialite = document.getElementById("f-specialite").value; const filterNiveau = document.getElementById("f-niveau").value;
+      const filterType1 = document.getElementById("f-type1").value; const filterType2 = document.getElementById("f-type2").value; const filterIndice = document.getElementById("f-indice").value;
+      const filterConvention = document.getElementById("f-convention").value;
+
+      currentData = allData.filter(row => {
+          const n = row._norm; const mSearch = search === "" || n.raw.includes(search) || n.workflow.includes(search) || n.workflowId.includes(search) || n.duePar.includes(search) || n.commentateurs.includes(search) || n.commentairesBrut.includes(search);
+          const mOverdue = filterShowOverdue ? row.isOverdue === true : true;
+          return mSearch && mOverdue &&
+                 (filterStatut === "" || n.statut.includes(filterStatut)) && (filterWorkflow === "" || row.workflow === filterWorkflow) && (filterLot === "" || row.lot === filterLot) &&
+                 (filterPhase === "" || row.phase === filterPhase) && (filterEmetteur === "" || row.emetteur === filterEmetteur) && (filterSpecialite === "" || row.specialite === filterSpecialite) &&
+                 (filterNiveau === "" || row.niveau === filterNiveau) && (filterType1 === "" || row.type1 === filterType1) && (filterType2 === "" || row.type2 === filterType2) &&
+                 (filterIndice === "" || row.indice === filterIndice) && (filterExt === "" || row.ext.toUpperCase() === filterExt.toUpperCase()) && (filterStatutRev === "" || row.statutRevision === filterStatutRev) &&
+                 (filterProgression === "" || row.progression === filterProgression) && (filterMissing === "" || n.missing_roles.includes(filterMissing)) &&
+                 (filterConvention === "" || row.convention === filterConvention);
+      });
+      displayLimit = 50; document.getElementById("table-scroll").scrollTop = 0; updateDashboard();
+    }
+
+    function getStatusBadgeClass(statut) { if (statut === "ATTENTE INITIATEUR") return "attente"; if (statut === "OUVERT (EN COURS)") return "encours"; if (statut === "INVALIDÉ") return "invalide"; return "ferme"; }
+    
+    function renderHeaders() {
+       const thead = document.getElementById("table-head"); const tr = document.createElement("tr");
+       currentColumns.forEach((col, index) => {
+           const th = document.createElement("th"); th.draggable = true; th.innerHTML = col.label + '<div class="resizer"></div>';
+           th.addEventListener("dragstart", e => { e.dataTransfer.effectAllowed = "move"; e.dataTransfer.setData("text/plain", index); th.classList.add("dragging"); });
+           th.addEventListener("dragover", e => { e.preventDefault(); e.dataTransfer.dropEffect = "move"; });
+           th.addEventListener("drop", e => { e.stopPropagation(); const srcIdx = parseInt(e.dataTransfer.getData("text/plain")); if (srcIdx !== index) { const [moved] = currentColumns.splice(srcIdx, 1); currentColumns.splice(index, 0, moved); renderHeaders(); renderTable(false); } });
+           th.addEventListener("dragend", () => th.classList.remove("dragging"));
+           const resizer = th.querySelector(".resizer"); resizer.addEventListener("mousedown", function(e) {
+              e.preventDefault(); e.stopPropagation(); let startX = e.pageX; let startWidth = th.getBoundingClientRect().width;
+              function onMouseMove(moveEvent) { requestAnimationFrame(() => { const newW = Math.max(40, startWidth + (moveEvent.pageX - startX)); th.style.width = newW + "px"; th.style.minWidth = newW + "px"; th.style.maxWidth = newW + "px"; const tbodyRows = document.querySelectorAll("#table-body tr"); tbodyRows.forEach(r => { if(r.children[index]) { r.children[index].style.width = newW + "px"; r.children[index].style.minWidth = newW + "px"; r.children[index].style.maxWidth = newW + "px"; } }); }); }
+              function onMouseUp() { document.removeEventListener("mousemove", onMouseMove); document.removeEventListener("mouseup", onMouseUp); }
+              document.addEventListener("mousemove", onMouseMove); document.addEventListener("mouseup", onMouseUp);
+           });
+           tr.appendChild(th);
+       });
+       thead.innerHTML = ""; thead.appendChild(tr);
+    }
+
+    function renderTable(append = false) {
+        const tbody = document.getElementById("table-body"); const dataToRender = currentData.slice(append ? displayLimit - 50 : 0, displayLimit);
+        const rowsHtml = dataToRender.map(row => {
+            let rowClasses = "data-row"; if(row.isOverdue) rowClasses += " row-overdue";
+            const cells = currentColumns.map(col => {
+                let content = ""; switch(col.id) {
+                    case "id": content = "<strong style='color:#f8fafc;'>" + (row.workflowId || "") + "</strong>"; break;
+                    case "statut": content = '<span class="badge ' + getStatusBadgeClass(row.statutDetaillé) + '">' + (row.statutDetaillé || "") + "</span>"; break;
+                    case "statut_revision": content = "<strong style='color:#cbd5e1;'>" + (row.statutRevision || "") + "</strong>"; break;
+                    case "required_roles": content = '<span style="font-weight:bold; color:#94a3b8;">' + (row.requiredRolesStr || "") + "</span>"; break;
+                    case "approbateur": const isBlocked = row.progression === "50%" && row.statutDetaillé === "OUVERT (EN COURS)"; const isFullyReviewed = row.missingRolesStr === "✅ Tous commenté" && row.statutDetaillé === "OUVERT (EN COURS)"; const isOverdue = row.isOverdue;
+                        if (!row.approbateurFinal || row.approbateurFinal === "-") { content = '<span style="color:#475569;">-</span>'; break; }
+                        if (isFullyReviewed && isOverdue) { content = '<span style="background:rgba(225,29,72,0.2); color:#fda4af; padding:2px 6px; border-radius:4px; font-size:10px; font-weight:bold; border:1px solid rgba(225,29,72,0.5);" title="En retard ET tous réviseurs ont commenté !">❗ ' + row.approbateurFinal + "</span>"; } else if (isBlocked || isFullyReviewed) { content = '<span style="background:rgba(147,51,234,0.2); color:#d8b4fe; padding:2px 6px; border-radius:4px; font-size:10px; font-weight:bold; border:1px solid rgba(147,51,234,0.5);" title="En attente validation finale">⚠️ ' + row.approbateurFinal + "</span>"; } else { content = '<span style="background:#1e293b; color:#cbd5e1; padding:2px 6px; border-radius:4px; font-size:10px; font-weight:bold; border:1px solid #334155;">' + row.approbateurFinal + "</span>"; } break;
+                    case "missing_roles": if(row.missingRolesStr === "✅ Tous commenté") content = '<span class="text-emerald">' + row.missingRolesStr + "</span>"; else if(row.missingRolesStr === "-" || row.missingRolesStr === "INITIATEUR") content = '<span style="color:#64748b;">' + row.missingRolesStr + "</span>"; else content = '<span class="text-red">⏱️ ' + row.missingRolesStr + "</span>"; break;
+                    case "action": content = '<strong style="color:#fbbf24;">' + (row.duePar || "") + "</strong>"; break;
+                    case "commentateurs": content = (row.commentateursStr || "").includes("🔴") ? row.commentateursStr.replace(/🔴/g, '<span class="text-red">🔴</span>') : (row.commentateursStr || ""); break;
+                    case "commentaires_text": const safeText = row.commentairesBrut !== "-" ? (row.commentairesBrut || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;") : "-"; content = '<div class="comment-box" title="' + safeText.replace(/"/g, "&quot;") + '">' + safeText + "</div>"; break;
+                    case "fichier": content = "<strong style='color:#e2e8f0;'>" + (row.raw || "") + '</strong><br><span style="color: #64748b; font-size: 10px;">WF: ' + (row.workflow || "") + "</span>"; break;
+                    case "lot": content = "<strong style='color:#818cf8;'>" + (row.lot || "") + "</strong>"; break;
+                    case "phase": content = row.phase || ""; break; case "emetteur": content = row.emetteur || ""; break; case "specialite": content = row.specialite || ""; break; case "niveau": content = row.niveau || ""; break; case "typ1": content = row.type1 || ""; break; case "typ2": content = row.type2 || ""; break; case "indice": content = "<strong>" + (row.indice || "") + "</strong>"; break; case "progression": content = "<strong>" + (row.progression || "") + "</strong>"; break; case "etape": content = row.etapeActuelle || ""; break; case "initiateur": content = row.initiateur || ""; break; case "creation": content = row.dateCreation || ""; break; case "date_cloture": content = row.dateCloture || ""; break;
+                    default: content = row[col.id] || ""; break;
+                }
+                let style = ""; if (["id", "lot", "phase", "emetteur", "specialite", "niveau", "typ1", "typ2", "indice"].includes(col.id)) style += "font-family: monospace; "; if (["typ1", "typ2"].includes(col.id)) style += "background-color: rgba(220, 38, 38, 0.1); color: #f87171; "; if (col.id === "lot") style += "background-color: rgba(79, 70, 229, 0.1); font-weight: bold; "; if (col.id === "missing_roles") style += "background-color: rgba(147, 51, 234, 0.1); "; if (col.id === "action") style += "background-color: rgba(217, 119, 6, 0.1); color: #fbbf24; "; if (col.id === "commentateurs") style += "background-color: rgba(37, 99, 235, 0.1); color: #60a5fa; "; if (col.id === "approbateur") style += "text-align: center; "; if (["progression", "etape", "initiateur", "creation", "date_cloture", "required_roles", "statut_revision"].includes(col.id)) style += "border-left: 1px solid #1e293b; "; if (["phase", "emetteur", "specialite", "niveau", "indice"].includes(col.id)) style += "color: #f87171;";
+                return '<td style="' + style + '">' + content + "</td>";
+            }).join("");
+            return '<tr class="' + rowClasses + '">' + cells + "</tr>";
+        }).join("");
+        if (append) tbody.insertAdjacentHTML("beforeend", rowsHtml); else tbody.innerHTML = rowsHtml;
+    }
+    
+    function getExportData() { return currentData.map(row => { let exp = {}; currentColumns.forEach(col => { let val = ""; switch(col.id) { case "id": val = row.workflowId; break; case "statut": val = row.statutDetaillé; break; case "statut_revision": val = row.statutRevision; break; case "required_roles": val = row.requiredRolesStr; break; case "missing_roles": val = row.missingRolesStr; break; case "approbateur": val = row.approbateurFinal; break; case "action": val = row.duePar; break; case "commentateurs": val = row.commentateursStr; break; case "commentaires_text": val = row.commentairesBrut; break; case "fichier": val = row.raw; break; case "lot": val = row.lot; break; case "phase": val = row.phase; break; case "emetteur": val = row.emetteur; break; case "specialite": val = row.specialite; break; case "niveau": val = row.niveau; break; case "typ1": val = row.type1; break; case "typ2": val = row.type2; break; case "indice": val = row.indice; break; case "progression": val = row.progression; break; case "etape": val = row.etapeActuelle; break; case "initiateur": val = row.initiateur; break; case "creation": val = row.dateCreation; break; case "date_cloture": val = row.dateCloture; break; default: val = row[col.id]; } exp[col.label] = val || "-"; }); return exp; }); }
+    function exportDataCSV() { const dataToExport = getExportData(); if(dataToExport.length === 0) { alert("Aucune donnée à exporter."); return; } const headers = Object.keys(dataToExport[0]); const csvRows = [headers.join(",")]; dataToExport.forEach(row => { const values = headers.map(header => { const val = String(row[header] || "").replace(/"/g, '""'); return '"' + val + '"'; }); csvRows.push(values.join(",")); }); const csvContent = "\uFEFF" + csvRows.join("\n"); const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" }); const url = URL.createObjectURL(blob); const link = document.createElement("a"); link.href = url; link.setAttribute("download", "Rapport_BIM_Filtre.csv"); document.body.appendChild(link); link.click(); document.body.removeChild(link); }
+    function exportDataExcel() { if (typeof XLSX === "undefined") { alert("La librairie Excel est inaccessible."); return; } const dataToExport = getExportData(); if(dataToExport.length === 0) { alert("Aucune donnée à exporter."); return; } const worksheet = XLSX.utils.json_to_sheet(dataToExport); const workbook = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(workbook, worksheet, "Dashboard_Filtre"); XLSX.writeFile(workbook, "Rapport_BIM_Filtre.xlsx"); }
+    
+    window.handleHtmlMembersUpload = function(event) {
+        const file = event.target.files[0]; if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            try {
+                const fileData = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(fileData, { type: "array" });
+                let membersSheetName = workbook.SheetNames.find(s => safeStr(s).toLowerCase().includes("membre") || safeStr(s).toLowerCase().includes("member"));
+                if (!membersSheetName) membersSheetName = workbook.SheetNames[0];
+                const json = XLSX.utils.sheet_to_json(workbook.Sheets[membersSheetName], { header: 1 });
+                let headerIdx = -1;
+                for (let i = 0; i < Math.min(10, json.length); i++) {
+                    const rowStr = (json[i] || []).map(cell => safeStr(cell).toLowerCase()).join(",");
+                    if (rowStr.includes("nom") && (rowStr.includes("société") || rowStr.includes("rôle") || rowStr.includes("role"))) { headerIdx = i; break; }
+                }
+                if (headerIdx === -1) { alert("En-têtes non reconnus dans le fichier Membres."); return; }
+                const headers = json[headerIdx].map(h => safeStr(h).toLowerCase());
+                const nameIdx = headers.findIndex(h => h.includes("nom") || h === "name");
+                const compIdx = headers.findIndex(h => h.includes("société") || h.includes("company"));
+                const roleIdx = headers.findIndex(h => h.includes("rôle") || h.includes("role"));
+                const acronymeIdx = headers.findIndex(h => h.includes("acronyme") && h.includes("obligatoires"));
+                if (nameIdx === -1 || roleIdx === -1) { alert("Colonnes Nom et Rôle obligatoires."); return; }
+                const newMembers = [];
+                for (let i = headerIdx + 1; i < json.length; i++) {
+                    const rowData = json[i]; if (!rowData || rowData.length === 0) continue;
+                    const name = safeStr(rowData[nameIdx]); if (!name || name === "-") continue;
+                    const rawRoles = safeStr(rowData[roleIdx]);
+                    const rolesArray = rawRoles.split(",").map(p => { const match = p.trim().match(/^([a-zA-Z0-9]+)_/); return match ? match[1].toUpperCase() : null; }).filter(Boolean);
+                    let roles = [...new Set(rolesArray)]; 
+                    if (acronymeIdx !== -1) {
+                        const rawAcronyme = safeStr(rowData[acronymeIdx]);
+                        if (rawAcronyme && rawAcronyme !== "-") {
+                            const withoutParens = rawAcronyme.replace(/\([^)]*\)/g, "").trim();
+                            withoutParens.split(/[,;/]+/).forEach(p => { const cleanAcro = p.trim().toUpperCase(); if (cleanAcro.length >= 2) roles.push(cleanAcro); });
+                        }
+                    }
+                    if (roles.includes("BUCO") && !roles.includes("BDC")) roles.push("BDC");
+                    if (roles.includes("BDC") && !roles.includes("BUCO")) roles.push("BUCO");
+                    newMembers.push({ name: name, company: safeStr(rowData[compIdx]), roles: [...new Set(roles)] });
+                }
+                currentMembers = newMembers; 
+                alert(newMembers.length + " membres importés ! Veuillez ré-importer vos Revues (Excel) pour appliquer les rôles."); 
+            } catch(err) { alert("Erreur fichier Membres."); }
+        };
+        reader.readAsArrayBuffer(file);
+    };
+    
+    window.handleHtmlReviewsUpload = function(event) {
+        const file = event.target.files[0]; if (!file) return;
+        document.getElementById("table-body").innerHTML = "<tr><td colspan='20' style='text-align:center; padding: 40px;'><i class='fa-solid fa-spinner fa-spin text-2xl'></i><br/>Analyse en cours...</td></tr>";
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            try {
+                const fileData = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(fileData, { type: "array" });
+                let pSheetName = workbook.SheetNames.find(s => safeStr(s).toLowerCase().includes("présentation") || safeStr(s).toLowerCase().includes("presentation"));
+                if (pSheetName) {
+                    const pJson = XLSX.utils.sheet_to_json(workbook.Sheets[pSheetName], { header: 1 });
+                    pJson.forEach(row => {
+                        if (!row || !row.length) return;
+                        const rowStr = row.map(cell => safeStr(cell)).join(" ").toLowerCase();
+                        const extractValue = (currentRow) => safeStr(currentRow[currentRow.length - 1] || currentRow.find(c => safeStr(c).trim() !== safeStr(currentRow[0]).trim()));
+                        if (rowStr.includes("date de création")) document.getElementById("c-date").textContent = extractValue(row);
+                        if (rowStr.includes("créé par")) document.getElementById("c-auth").textContent = extractValue(row);
+                        if (rowStr.includes("nombre total de revues")) document.getElementById("c-tot").textContent = extractValue(row);
+                        if (rowStr.includes("ouvrir les revues") && !rowStr.includes("attente")) document.getElementById("c-ouv").textContent = extractValue(row);
+                        if (rowStr.includes("attente de l\'initiateur")) document.getElementById("c-att").textContent = extractValue(row);
+                        if (rowStr.includes("revues fermées")) document.getElementById("c-fer").textContent = extractValue(row);
+                        if (rowStr.includes("révisions invalidées")) document.getElementById("c-inv").textContent = extractValue(row);
+                    });
+                }
+                let dSheetName = workbook.SheetNames.find(s => safeStr(s).toLowerCase().includes("détails") || safeStr(s).toLowerCase().includes("details"));
+                if (!dSheetName) dSheetName = workbook.SheetNames[0]; 
+                const json = XLSX.utils.sheet_to_json(workbook.Sheets[dSheetName], { header: 1 });
+                let headerIndex = -1;
+                for (let i = 0; i < Math.min(20, json.length); i++) {
+                    const rowStr = (json[i] || []).map(cell => safeStr(cell).toLowerCase()).join(",");
+                    if (rowStr.includes("statut") && rowStr.includes("nom du fichier")) { headerIndex = i; break; }
+                }
+                if (headerIndex === -1) { alert("En-têtes non reconnus dans l\'onglet Détails."); return; }
+                const headers = json[headerIndex].map(h => normalizeText(h));
+                const getExactIdx = (name) => headers.findIndex(h => h === normalizeText(name));
+                const getIncludesIdx = (name) => headers.findIndex(h => h.includes(normalizeText(name)));
+                const idxMap = {
+                    file: getExactIdx("Nom du fichier"), status: getExactIdx("Statut") !== -1 ? getExactIdx("Statut") : getIncludesIdx("Statut"), 
+                    workflow: getExactIdx("Workflow"), nomRevue: getExactIdx("Nom de la revue"), chemin: getExactIdx("Chemin"),
+                    init: getExactIdx("Initié par"), date: getExactIdx("Date de création"), progression: getIncludesIdx("progression") !== -1 ? getIncludesIdx("progression") : getIncludesIdx("avancement"), 
+                    etape: getExactIdx("Étape actuelle"), duePar: getIncludesIdx("due par"), dueLe: getIncludesIdx("due le"),
+                    revueId: getExactIdx("ID") !== -1 ? getExactIdx("ID") : getIncludesIdx("ID"),
+                    commentaires: getExactIdx("Commentaires") !== -1 ? getExactIdx("Commentaires") : getIncludesIdx("commentaire"),
+                    statutRev: headers.findIndex(h => h.includes("approbation") || h.includes("revision") || h.includes("statut doc")),
+                    dateCloture: headers.findIndex(h => h.includes("cloture") || h.includes("fin") || h.includes("closed") || h.includes("approuve le"))
+                };
+                const rawList = [];
+                for (let i = headerIndex + 1; i < json.length; i++) { if (json[i]) rawList.push({ row: json[i], idxMap }); }
+                const processedData = rawList.map((item, index) => {
+                    const { row, idxMap } = item;
+                    const filename = safeStr(row[idxMap.file]);
+                    if (!filename || filename === "-") return null;
+                    const parsedFile = parseFileNameLocal(filename);
+                    const nomRevue = safeStr(row[idxMap.nomRevue]);
+                    const workflowStr = safeStr(row[idxMap.workflow]);
+                    const chemin = safeStr(row[idxMap.chemin]);
+                    const statutBase = row[idxMap.status] !== undefined ? safeStr(row[idxMap.status]).trim() : "INCONNU";
+                    const etape = safeStr(row[idxMap.etape]);
+                    const initiateur = safeStr(row[idxMap.init]);
+                    const commentairesTxt = safeStr(row[idxMap.commentaires]);
+                    const statutRevision = idxMap.statutRev !== undefined && idxMap.statutRev !== -1 ? safeStr(row[idxMap.statutRev]) : "-";
+                    const dateCloture = idxMap.dateCloture !== undefined && idxMap.dateCloture !== -1 ? safeStr(row[idxMap.dateCloture]) : "-";
+                    const dateCreationStr = safeStr(row[idxMap.date]);
+                    let progressionStr = safeStr(row[idxMap.progression]);
+                    if (progressionStr !== "-" && progressionStr !== "") {
+                        const num = parseFloat(progressionStr.replace(/,/g, ".").replace(/%/g, ""));
+                        if (!isNaN(num)) {
+                            if (num <= 1 && progressionStr.includes(".")) { progressionStr = Math.round(num * 100) + "%"; } 
+                            else { progressionStr = Math.round(num) + "%"; }
+                        } else { progressionStr = "-"; }
+                    } else { progressionStr = "-"; }
+                    const statutDetaillé = determineDetailedStatus(statutBase, etape);
+                    let duePar = safeStr(row[idxMap.duePar]);
+                    if (statutDetaillé === "ATTENTE INITIATEUR" && (duePar === "-" || duePar.toLowerCase().includes("initiat"))) duePar = initiateur; 
+                    const commenterNames = extractCommentersData(commentairesTxt, currentMembers);
+                    const commentateursFormatted = commenterNames.map(name => {
+                      const member = currentMembers.find(m => normalizeText(m.name) === normalizeText(name));
+                      if (member) return `${member.name} (${member.company})`;
+                      let staticCompany = null;
+                      const cMap = {"Benoit Tahchi": "CFL IMMO", "Nancy Lepine": "TSPE", "Claude Ballini": "TPFT", "Jean Dupont": "Architectes SA", "Marc Leblanc": "Bureau de Contrôle", "Jean-Philippe Lemaire": "CFL", "Secrétariat OA": "CFL"};
+                      Object.keys(cMap).forEach(k => { if(normalizeText(name).includes(normalizeText(k))) staticCompany = cMap[k]; });
+                      if (staticCompany) return `${name} (${staticCompany})`;
+                      return `${name} 🔴(À identifier)`;
+                    });
+                    const commentateursStr = commentateursFormatted.length > 0 ? commentateursFormatted.join(" • ") : "-";
+                    let missingRolesStr = "-"; let requiredRolesStr = "-";
+                    const reqRoles = getRequiredRolesFromWorkflow(workflowStr);
+                    if (reqRoles.length > 0) requiredRolesStr = reqRoles.join(", ");
+                    const approbateurFinal = getFinalApproverFromWorkflow(workflowStr);
+                    let isOverdue = false;
+                    const creationDateObj = parseFrenchDateLocal(dateCreationStr);
+                    if (creationDateObj && reqRoles.length > 0 && (statutDetaillé === "OUVERT (EN COURS)" || statutDetaillé === "ATTENTE INITIATEUR")) {
+                        const parts = workflowStr.split("_");
+                        const slaPart = parts.find(p => /^\d+J$/i.test(p));
+                        if (slaPart) {
+                            const slaDays = parseInt(slaPart.replace(/J/i, ""), 10);
+                            const dueDate = getDueDateInBusinessDaysLocal(creationDateObj, slaDays);
+                            const today = new Date(); today.setHours(0,0,0,0); dueDate.setHours(0,0,0,0);
+                            if (today > dueDate) isOverdue = true;
+                        }
+                    }
+                    if (statutDetaillé === "OUVERT (EN COURS)") {
+                      if (reqRoles.length > 0) {
+                        const commentedRoles = new Set();
+                        commenterNames.forEach(cName => {
+                          const cNameNorm = normalizeText(cName);
+                          const member = currentMembers.find(m => normalizeText(m.name) === cNameNorm);
+                          if (member && member.roles) {
+                            member.roles.forEach(r => {
+                                const upperRole = r.toUpperCase();
+                                commentedRoles.add(upperRole);
+                                if (upperRole === "BDC") commentedRoles.add("BUCO");
+                                if (upperRole === "BUCO") commentedRoles.add("BDC");
+                                if (upperRole === "OGCE") { commentedRoles.add("BDC"); commentedRoles.add("BUCO"); }
+                            });
+                          }
+                        });
+                        const missing = [];
+                        reqRoles.forEach(reqRole => {
+                           const reqRoleUpper = reqRole.toUpperCase();
+                           let isFulfilled = commentedRoles.has(reqRoleUpper);
+                           if (reqRoleUpper === "BDC" && (commentedRoles.has("BUCO") || commentedRoles.has("OGCE"))) isFulfilled = true;
+                           if (reqRoleUpper === "BUCO" && (commentedRoles.has("BDC") || commentedRoles.has("OGCE"))) isFulfilled = true;
+                           if (reqRoleUpper === "OGCE" && (commentedRoles.has("BDC") || commentedRoles.has("BUCO"))) isFulfilled = true;
+                           if (!isFulfilled) missing.push(reqRoleUpper);
+                        });
+                        if (missing.length > 0) missingRolesStr = missing.join(", ");
+                        else missingRolesStr = "✅ Tous commenté";
+                      }
+                    } else if (statutDetaillé === "ATTENTE INITIATEUR") {
+                      missingRolesStr = "INITIATEUR";
+                    }
+                    const baseRow = {
+                      id: `imported-row-${index}-${Date.now()}`, 
+                      workflowId: (idxMap.revueId !== -1 && row[idxMap.revueId] !== undefined) ? safeStr(row[idxMap.revueId]).trim() : "-",
+                      statutBase: statutBase, statutDetaillé: statutDetaillé, nomRevue: nomRevue, workflow: workflowStr, chemin: chemin,
+                      lot: extractLot(nomRevue, chemin, workflowStr), initiateur: initiateur, dateCreation: dateCreationStr,
+                      progression: progressionStr, etapeActuelle: etape, duePar: duePar, dueLe: safeStr(row[idxMap.dueLe]),
+                      commentairesBrut: commentairesTxt, commentateursStr: commentateursStr, missingRolesStr: String(missingRolesStr), requiredRolesStr: String(requiredRolesStr),
+                      approbateurFinal: String(approbateurFinal),
+                      statutRevision: statutRevision, dateCloture: dateCloture, isOverdue: isOverdue, ...parsedFile
+                    };
+                    return {
+                      ...baseRow,
+                      _norm: {
+                        workflowId: normalizeText(baseRow.workflowId), workflow: normalizeText(baseRow.workflow), statut: normalizeText(baseRow.statutDetaillé), 
+                        convention: normalizeText(baseRow.convention), ext: normalizeText(baseRow.ext), phase: normalizeText(baseRow.phase), emetteur: normalizeText(baseRow.emetteur),
+                        specialite: normalizeText(baseRow.specialite), niveau: normalizeText(baseRow.niveau), type1: normalizeText(baseRow.type1), type2: normalizeText(baseRow.type2),
+                        indice: normalizeText(baseRow.indice), lot: normalizeText(baseRow.lot), raw: normalizeText(baseRow.raw), duePar: normalizeText(baseRow.duePar),
+                        initiateur: normalizeText(baseRow.initiateur), commentateurs: normalizeText(baseRow.commentateursStr), commentairesBrut: normalizeText(baseRow.commentairesBrut),
+                        missing_roles: normalizeText(baseRow.missingRolesStr), required_roles: normalizeText(baseRow.requiredRolesStr), approbateur: normalizeText(baseRow.approbateurFinal),
+                        statut_revision: normalizeText(baseRow.statutRevision), date_cloture: normalizeText(baseRow.dateCloture), progression: normalizeText(baseRow.progression)
+                      }
+                    };
+                }).filter(Boolean);
+
+                allData = processedData;
+                const opts = { workflow: new Set(), phase: new Set(), emetteur: new Set(), specialite: new Set(), niveau: new Set(), type1: new Set(), type2: new Set(), indice: new Set(), lot: new Set(), ext: new Set(), statut_revision: new Set(), progression: new Set() };
+                allData.forEach(d => {
+                  if (d.workflow && d.workflow !== "-") opts.workflow.add(cleanDisplayStr(d.workflow));
+                  if (d.convention === "Oui") {
+                      if (d.phase && d.phase !== "-") opts.phase.add(cleanDisplayStr(d.phase));
+                      if (d.emetteur && d.emetteur !== "-") opts.emetteur.add(cleanDisplayStr(d.emetteur));
+                      if (d.specialite && d.specialite !== "-") opts.specialite.add(cleanDisplayStr(d.specialite));
+                      if (d.niveau && d.niveau !== "-") opts.niveau.add(cleanDisplayStr(d.niveau));
+                      if (d.type1 && d.type1 !== "-") opts.type1.add(cleanDisplayStr(d.type1));
+                      if (d.type2 && d.type2 !== "-") opts.type2.add(cleanDisplayStr(d.type2));
+                      if (d.indice && d.indice !== "-") opts.indice.add(cleanDisplayStr(d.indice));
+                  }
+                  if (d.lot && d.lot !== "Hors Lot") opts.lot.add(cleanDisplayStr(d.lot));
+                  if (d.ext && d.ext !== "-") opts.ext.add(cleanDisplayStr(d.ext).toUpperCase());
+                  if (d.statutRevision && d.statutRevision !== "-") opts.statut_revision.add(cleanDisplayStr(d.statutRevision));
+                  if (d.progression && d.progression !== "-") opts.progression.add(cleanDisplayStr(d.progression));
+                });
+                filterOpts.workflow = Array.from(opts.workflow).sort(); filterOpts.phase = Array.from(opts.phase).sort(); filterOpts.emetteur = Array.from(opts.emetteur).sort();
+                filterOpts.specialite = Array.from(opts.specialite).sort(); filterOpts.niveau = Array.from(opts.niveau).sort(); filterOpts.type1 = Array.from(opts.type1).sort();
+                filterOpts.type2 = Array.from(opts.type2).sort(); filterOpts.indice = Array.from(opts.indice).sort(); filterOpts.lot = Array.from(opts.lot).sort();
+                filterOpts.ext = Array.from(opts.ext).sort(); filterOpts.statut_revision = Array.from(opts.statut_revision).sort(); filterOpts.progression = Array.from(opts.progression).sort();
+                document.querySelectorAll("select").forEach(el => { el.innerHTML = ""; el.appendChild(new Option("Tous", "")); });
+                populateSelects(); applyFilters(); openTab("tab-donnees", document.querySelectorAll(".tab-btn")[1]); alert("Données mises à jour avec succès !");
+            } catch (err) { console.error(err); alert("Erreur lors de la lecture."); }
+        };
+        reader.readAsArrayBuffer(file);
+    };
+
+    document.addEventListener("DOMContentLoaded", () => { populateSelects(); initCharts(); renderHeaders(); applyFilters(); let isRendering = false; document.getElementById("table-scroll").addEventListener("scroll", function() { if (this.scrollTop + this.clientHeight >= this.scrollHeight - 400) { if (displayLimit < currentData.length && !isRendering) { isRendering = true; requestAnimationFrame(() => { displayLimit += 50; renderTable(true); isRendering = false; }); } } }); });
+  </script>
+</body>
+</html>
